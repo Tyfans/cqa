@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>强对流天气概率判断工具</title>
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --bg2: #0f172a;
+    --bg3: #1e293b;
+    --bg4: #334155;
+    --border: #334155;
+    --border2: #475569;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --accent: #3b82f6;
+    --accent2: #60a5fa;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --orange: #f97316;
+    --red: #ef4444;
+    --purple: #a855f7;
+    --cyan: #06b6d4;
+    --rain: #3b82f6;
+    --wind: #22c55e;
+    --hail: #a855f7;
+    --tornado: #ef4444;
+    --lightning: #eab308;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .header-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .header-icon svg { width: 20px; height: 20px; fill: white; }
+  .header-title { font-size: 18px; font-weight: 700; color: var(--text); }
+  .header-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+
+  /* ===== LAYOUT ===== */
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+  }
+  @media (max-width: 1100px) {
+    .container { grid-template-columns: 1fr; }
+  }
+
+  /* ===== PANELS ===== */
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .panel-header {
+    background: var(--bg3);
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .panel-header svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .panel-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .panel-body { padding: 18px; }
+
+  /* ===== PARAM GROUPS ===== */
+  .param-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .param-group {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .param-group-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+  }
+  .param-group-header svg { width: 14px; height: 14px; opacity: 0.7; }
+
+  /* ===== PARAM ITEMS ===== */
+  .param-item {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(51,65,85,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .param-item:last-child { border-bottom: none; }
+  .param-disabled {
+    opacity: 0.5;
+    filter: grayscale(0.7);
+  }
+  .param-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .param-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .param-name .unit {
+    font-size: 11px;
+    color: var(--text3);
+    font-weight: 400;
+  }
+  .param-value-display {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent2);
+    min-width: 60px;
+    text-align: right;
+  }
+
+  /* ===== INPUTS ===== */
+  .param-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Slider */
+  input[type=range] {
+    flex: 1;
+    height: 4px;
+    appearance: none;
+    background: var(--bg4);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  input[type=range]:hover::-webkit-slider-thumb { background: var(--accent2); }
+
+  /* Number input */
+  input[type=number] {
+    width: 76px;
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 5px 8px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type=number]:focus { border-color: var(--accent); }
+
+  /* Select */
+  select {
+    flex: 1;
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 6px 8px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 26px;
+  }
+  select:focus { border-color: var(--accent); }
+
+  /* Toggle button group */
+  .btn-group {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .btn-toggle {
+    padding: 4px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-toggle:hover { border-color: var(--accent); color: var(--accent2); }
+  .btn-toggle.active { background: var(--accent); border-color: var(--accent); color: white; font-weight: 600; }
+
+  /* ===== RIGHT PANEL - RESULTS ===== */
+  .results-panel { position: sticky; top: 76px; }
+
+  .weather-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    transition: border-color 0.3s;
+  }
+
+  .weather-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .weather-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .weather-icon svg { width: 20px; height: 20px; }
+  .weather-name { font-size: 14px; font-weight: 600; }
+  .weather-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+  .prob-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .prob-bar-bg {
+    flex: 1;
+    height: 8px;
+    background: var(--bg4);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .prob-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(.25,.8,.25,1);
+    background: var(--accent);
+  }
+  .prob-pct {
+    font-size: 15px;
+    font-weight: 700;
+    min-width: 44px;
+    text-align: right;
+  }
+
+  .prob-level {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-top: 6px;
+    letter-spacing: 0.03em;
+  }
+
+  /* Levels */
+  .level-none { background: rgba(100,116,139,0.2); color: #94a3b8; }
+  .level-low { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .level-mod { background: rgba(234,179,8,0.15); color: #facc15; }
+  .level-high { background: rgba(249,115,22,0.15); color: #fb923c; }
+  .level-extreme { background: rgba(239,68,68,0.18); color: #f87171; }
+
+  /* Weather card border colors by probability */
+  .weather-card.p-none { border-color: #334155; }
+  .weather-card.p-low { border-color: rgba(34,197,94,0.4); }
+  .weather-card.p-mod { border-color: rgba(234,179,8,0.4); }
+  .weather-card.p-high { border-color: rgba(249,115,22,0.4); }
+  .weather-card.p-extreme { border-color: rgba(239,68,68,0.5); }
+
+  /* ===== KEY FACTORS ===== */
+  .factors-list {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .factor-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.4;
+  }
+  .factor-item::before {
+    content: '›';
+    color: var(--text3);
+    font-size: 13px;
+    line-height: 1.2;
+    flex-shrink: 0;
+  }
+  .factor-pos { color: #4ade80; }
+  .factor-neg { color: #f87171; }
+  .factor-warn { color: #facc15; }
+
+  /* ===== CALC BUTTON ===== */
+  .calc-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .calc-btn:hover { opacity: 0.9; }
+  .calc-btn:active { transform: scale(0.98); }
+  .calc-btn svg { width: 16px; height: 16px; }
+
+  /* ===== RESET BTN ===== */
+  .reset-btn {
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+  }
+  .reset-btn:hover { background: var(--bg3); color: var(--text); }
+
+  /* ===== PARAMETER TOGGLE SWITCH ===== */
+  .param-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 20px;
+  }
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg4);
+    border-radius: 20px;
+    transition: .3s;
+  }
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: .3s;
+  }
+  .toggle-switch input:checked + .toggle-slider {
+    background-color: var(--accent);
+  }
+  .toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(18px);
+  }
+
+  /* ===== COMPREHENSIVE SCORE ===== */
+  .overall-score {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .overall-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .overall-value { font-size: 36px; font-weight: 800; line-height: 1; }
+  .overall-desc { font-size: 12px; color: var(--text2); margin-top: 6px; }
+
+  /* ===== TOOLTIP ===== */
+  .tip {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background: var(--bg4);
+    border-radius: 50%;
+    text-align: center;
+    line-height: 14px;
+    font-size: 10px;
+    color: var(--text3);
+    cursor: help;
+    position: relative;
+  }
+  .tip:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    top: 18px;
+    transform: translateX(-50%);
+    background: #1e293b;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 11px;
+    color: var(--text);
+    white-space: nowrap;
+    z-index: 200;
+    max-width: 200px;
+    white-space: normal;
+    width: max-content;
+    max-width: 180px;
+    line-height: 1.4;
+  }
+
+  /* ===== SECTION LABEL ===== */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    padding: 0 0 10px 0;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ===== AUTO UPDATE BADGE ===== */
+  .auto-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--green);
+    padding: 2px 7px;
+    background: rgba(34,197,94,0.12);
+    border-radius: 999px;
+    margin-left: auto;
+  }
+  .auto-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+  /* ===== INFO BAR ===== */
+  .info-bar {
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: #60a5fa;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .info-bar strong { color: #93c5fd; }
+
+  .hint-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .hint-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .hint-chip:hover { opacity: 0.8; transform: scale(0.97); }
+  .chip-rain { color: #60a5fa; border-color: rgba(96,165,250,0.4); background: rgba(59,130,246,0.08); }
+  .chip-wind { color: #4ade80; border-color: rgba(74,222,128,0.4); background: rgba(34,197,94,0.08); }
+  .chip-hail { color: #c084fc; border-color: rgba(192,132,252,0.4); background: rgba(168,85,247,0.08); }
+  .chip-tornado { color: #f87171; border-color: rgba(248,113,113,0.4); background: rgba(239,68,68,0.08); }
+  .chip-lightning { color: #facc15; border-color: rgba(250,204,21,0.4); background: rgba(234,179,8,0.08); }
+
+  @media (max-width: 600px) {
+    .param-groups { grid-template-columns: 1fr; }
+    .container { padding: 12px; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-icon">
+    <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+  </div>
+  <div>
+    <div class="header-title">强对流天气概率判断工具</div>
+    <div class="header-sub">基于热动力参数综合评估 · 仅供气象业务参考</div>
+  </div>
+  <div class="auto-badge" style="margin-left:auto">
+    <div class="auto-dot"></div>实时计算
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- LEFT: INPUT PANEL -->
+  <div>
+
+    <!-- Quick presets -->
+    <div class="info-bar">
+      <strong>快速预设情景：</strong> 点击下方标签快速加载典型强对流环境参数，也可手动调节各项参数。
+      <div class="hint-row">
+        <span class="hint-chip chip-rain" onclick="loadPreset('rain')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 17.58A5 5 0 0018 8h-1.26A8 8 0 104 15.25"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="8" y1="20" x2="8.01" y2="20"/><line x1="12" y1="18" x2="12.01" y2="18"/><line x1="12" y1="22" x2="12.01" y2="22"/><line x1="16" y1="16" x2="16.01" y2="16"/><line x1="16" y1="20" x2="16.01" y2="20"/></svg>
+          短时强降水
+        </span>
+        <span class="hint-chip chip-wind" onclick="loadPreset('wind')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2"/></svg>
+          对流性大风
+        </span>
+        <span class="hint-chip chip-hail" onclick="loadPreset('hail')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          冰雹
+        </span>
+        <span class="hint-chip chip-tornado" onclick="loadPreset('tornado')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 4H3M17 9H7M19 14H5M21 19H3"/></svg>
+          龙卷风
+        </span>
+        <span class="hint-chip chip-lightning" onclick="loadPreset('lightning')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          雷电
+        </span>
+        <span class="hint-chip" style="color:#94a3b8;border-color:rgba(148,163,184,0.3);background:rgba(148,163,184,0.05)" onclick="resetAll()">
+          重置
+        </span>
+      </div>
+    </div>
+
+    <div class="param-groups" id="paramGroups">
+      <!-- Groups generated by JS -->
+    </div>
+
+  </div>
+
+  <!-- RIGHT: RESULT PANEL -->
+  <div>
+    <div class="section-label">综合评估结果</div>
+
+    <!-- Overall threat -->
+    <div class="overall-score">
+      <div class="overall-label">综合强对流威胁指数</div>
+      <div class="overall-value" id="overallScore" style="color:#94a3b8">—</div>
+      <div class="overall-desc" id="overallDesc">请输入参数后自动计算</div>
+    </div>
+
+    <!-- Weather type cards -->
+    <div id="resultCards"></div>
+
+    <div style="font-size:10px;color:var(--text3);line-height:1.5;padding:8px 0">
+      ⚠️ 本工具仅供气象业务学习参考，概率值基于统计参数阈值综合评估，不代表精确预报结论。实际预报需结合雷达、卫星及数值模式综合判断。
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===================================================
+// PARAMETER DEFINITIONS
+// ===================================================
+const PARAMS = [
+  // --- 热力参数 ---
+  {
+    group: '热力不稳定参数', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M12 2v8M12 22c-3.31 0-6-2.69-6-6 0-2.5 1.5-4.5 3-5.5V2h6v8.5c1.5 1 3 3 3 5.5 0 3.31-2.69 6-6 6z"/></svg>`,
+    items: [
+      { id:'cape', label:'CAPE', unit:'J/kg', type:'range', min:0, max:4000, step:50, default:500, desc:'对流有效位能。≥1000有利强对流，≥2500利于冰雹/龙卷', hasValue: true },
+      { id:'mlcape', label:'混合层CAPE (MLCAPE)', unit:'J/kg', type:'range', min:0, max:3000, step:50, default:400, desc:'≥500有利，≥1000强，≥2000极端', hasValue: true },
+      { id:'mucape', label:'最大CAPE (MUCAPE)', unit:'J/kg', type:'range', min:0, max:5000, step:100, default:800, desc:'≥1000有利，≥2500极端不稳定', hasValue: true },
+      { id:'cin', label:'CIN', unit:'J/kg', type:'range', min:0, max:300, step:5, default:30, desc:'对流抑制能量。0-50利于触发，>100抑制明显', hasValue: true },
+      { id:'mlcin', label:'混合层CIN (MLCIN)', unit:'J/kg', type:'range', min:0, max:400, step:5, default:20, desc:'类似CIN但对混合层空气，夏季热抑制可达300-400J/kg', hasValue: true },
+      { id:'li', label:'抬升指数 LI', unit:'℃', type:'range', min:-12, max:6, step:0.5, default:-3, desc:'<-4强不稳定，<-6极端不稳定', hasValue: true },
+      { id:'si', label:'沙瓦指数 SI', unit:'℃', type:'range', min:-10, max:10, step:0.5, default:0, desc:'<0不稳定，<-4强不稳定', hasValue: true },
+      { id:'tt', label:'全总指数 TT', unit:'', type:'range', min:30, max:60, step:1, default:44, desc:'≥44轻度，≥50强，≥55极端不稳定', hasValue: true },
+      { id:'ki', label:'K指数', unit:'', type:'range', min:10, max:45, step:1, default:28, desc:'≥25有利雷暴，≥35强对流可能', hasValue: true },
+    ]
+  },
+  // --- 水汽条件 ---
+  {
+    group: '水汽条件', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>`,
+    items: [
+      { id:'pw', label:'可降水量 PW(PWAT)', unit:'mm', type:'range', min:0, max:80, step:1, default:35, desc:'≥50mm利于短时强降水，华南≥60mm极端降水', hasValue: true },
+      { id:'rh700', label:'700hPa相对湿度', unit:'%', type:'range', min:0, max:100, step:1, default:60, desc:'≥70%湿层深厚利于降水', hasValue: true },
+      { id:'rh850', label:'850hPa相对湿度', unit:'%', type:'range', min:0, max:100, step:1, default:65, desc:'≥80%低层湿润', hasValue: true },
+      { id:'td2m', label:'2m露点温度', unit:'℃', type:'range', min:-5, max:30, step:0.5, default:18, desc:'≥20℃水汽充沛', hasValue: true },
+      { id:'lfc', label:'自由对流高度 LFC', unit:'m', type:'range', min:500, max:5500, step:100, default:1200, desc:'<1000m低自由对流高度有利强对流触发，>3500m抑制较强', hasValue: true },
+      { id:'lcl', label:'抬升凝结高度 LCL', unit:'m', type:'range', min:200, max:2500, step:50, default:800, desc:'<1000m低LCL有利龙卷生成', hasValue: true },
+    ]
+  },
+  // --- 动力条件 ---
+  {
+    group: '动力抬升条件', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>`,
+    items: [
+      { id:'shear06', label:'0-6km风切变', unit:'m/s', type:'range', min:0, max:40, step:1, default:12, desc:'≥15m/s有利超级单体；≥20m/s强切变环境', hasValue: true },
+      { id:'shear03', label:'0-3km风切变 SHR03', unit:'m/s', type:'range', min:0, max:30, step:1, default:8, desc:'≥12m/s有利普通超级单体', hasValue: true },
+      { id:'shear01', label:'0-1km风切变 SHR01', unit:'m/s', type:'range', min:0, max:20, step:0.5, default:4, desc:'≥10m/s强低层切变利于龙卷', hasValue: true },
+      
+      { id:'srh1', label:'0-1km SRH', unit:'m²/s²', type:'range', min:-100, max:600, step:10, default:80, desc:'≥150利于超级单体/龙卷；≥300显著有利龙卷', hasValue: true },
+      { id:'srh3', label:'0-3km SRH', unit:'m²/s²', type:'range', min:0, max:800, step:10, default:100, desc:'≥250有利超级单体', hasValue: true },
+      { id:'eff_srh', label:'有效SRH (Eff. SRH)', unit:'m²/s²', type:'range', min:0, max:500, step:10, default:60, desc:'≥150有利超级单体组织', hasValue: true },
+      { id:'dcape', label:'下击暴流有效位能 DCAPE', unit:'J/kg', type:'range', min:0, max:2000, step:50, default:500, desc:'≥1000利于强地面风，≥1500显著下击暴流风险', hasValue: true },
+    ]
+  },
+  // --- 复合指数 ---
+  {
+    group: '复合对流参数', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    items: [
+      { id:'scp', label:'超级单体复合参数 SCP', unit:'', type:'range', min:0, max:20, step:0.5, default:1, desc:'≥1有利超级单体，≥4强超级单体' },
+      { id:'stp', label:'显著龙卷参数 STP', unit:'', type:'range', min:0, max:10, step:0.2, default:0.2, desc:'≥1有利显著龙卷，≥3强龙卷威胁' },
+      { id:'sweat', label:'SWEAT指数', unit:'', type:'range', min:0, max:500, step:5, default:150, desc:'≥200有雷暴可能，≥300强对流' },
+      { id:'ship', label:'显著冰雹参数 SHIP', unit:'', type:'range', min:0, max:5, step:0.1, default:0.3, desc:'≥0.5显著冰雹可能，≥1强冰雹' },
+    ]
+  },
+  // --- 温度层结 ---
+  {
+    group: '温度层结', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M2 12h20M12 2v20"/></svg>`,
+    items: [
+      { id:'temp500', label:'500hPa温度', unit:'℃', type:'range', min:-35, max:-5, step:1, default:-18, desc:'≤-20℃冷空气强，有利强不稳定' },
+      { id:'t75', label:'700-500hPa温差 T75', unit:'℃', type:'range', min:15, max:35, step:0.5, default:25, desc:'≥28℃强不稳定；≥30℃极端不稳定' },{ id:'t85', label:'850-500hPa温差 T85', unit:'℃', type:'range', min:25, max:50, step:0.5, default:38, desc:'≥42℃利于强对流发展；≥45℃极端不稳定' },
+      { id:'freezing', label:'0℃层高度', unit:'m', type:'range', min:1000, max:5500, step:100, default:3500, desc:'3-4km有利冰雹到地；>5km不易达地' },
+      { id:'hail_lev', label:'-20℃层高度', unit:'m', type:'range', min:4000, max:10000, step:100, default:7000, desc:'<7000m有利大冰雹增长' },
+    ]
+  },
+  // --- 背景环境 ---
+  {
+    group: '背景环境特征', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>`,
+    items: [
+      { id:'season', label:'季节', unit:'', type:'select', options:['春季(3-5月)','夏季(6-8月)','秋季(9-11月)','冬季(12-2月)'], default:1, desc:'季节影响各类强对流背景概率' },
+      { id:'region', label:'区域', unit:'', type:'select', options:['华南','华东','华北','西南','东北','西北','其他'], default:0, desc:'不同区域气候背景不同' },
+      { id:'time_of_day', label:'时段', unit:'', type:'select', options:['午前(06-12时)','午后(12-18时)','傍晚(18-22时)','夜间(22-06时)'], default:1, desc:'午后热对流最旺盛' },
+      { id:'conv_mode', label:'对流模式', unit:'', type:'select', options:['离散单体','线性对流(飑线)','超级单体','MCS'], default:0, desc:'对流组织方式影响灾害类型' },
+      { id:'trigger', label:'触发机制', unit:'', type:'select', options:['地面辐合线','锋面','切变线','干线','地形抬升','热力对流','暖区'], default:5, desc:'触发机制影响对流强度和分布，暖区(warmsector)为华南常见对流触发背景' },
+    ]
+  },
+];
+
+// ===================================================
+// PRESETS
+// ===================================================
+const PRESETS = {
+  rain: { cape:2500, mlcape:1800, mucape:3000, cin:20, mlcin:15, li:-6, si:-4, tt:52, ki:38, pw:65, rh700:85, rh850:90, td2m:24, lfc:800, lcl:600, shear06:10, shear03:6, shear01:3, srh1:60, srh3:80, eff_srh:45, dcape:800, scp:0.5, stp:0.1, sweat:280, ship:0.2, temp500:-16, t75:28, t85:40, freezing:4200, hail_lev:8000, season:1, region:0, time_of_day:1, conv_mode:2, trigger:0 },
+  wind: { cape:1500, mlcape:1200, mucape:1800, cin:30, mlcin:25, li:-4, si:-2, tt:48, ki:30, pw:35, rh700:55, rh850:65, td2m:16, lfc:1500, lcl:1000, shear06:25, shear03:18, shear01:8, srh1:200, srh3:250, eff_srh:180, dcape:1500, scp:3, stp:0.5, sweat:350, ship:0.3, temp500:-22, t75:31, t85:46, freezing:3200, hail_lev:6500, season:0, region:1, time_of_day:1, conv_mode:1, trigger:0 },
+  hail: { cape:3000, mlcape:2200, mucape:3500, cin:10, mlcin:8, li:-8, si:-5, tt:55, ki:28, pw:40, rh700:65, rh850:75, td2m:18, lfc:1000, lcl:800, shear06:28, shear03:20, shear01:6, srh1:250, srh3:350, eff_srh:280, dcape:600, scp:5, stp:0.8, sweat:380, ship:2.5, temp500:-25, t75:34, t85:48, freezing:3000, hail_lev:6000, season:0, region:1, time_of_day:1, conv_mode:2, trigger:0 },
+  tornado: { cape:2800, mlcape:2000, mucape:3200, cin:15, mlcin:12, li:-7, si:-4, tt:53, ki:32, pw:50, rh700:75, rh850:85, td2m:22, lfc:600, lcl:400, shear06:30, shear03:22, shear01:14, srh1:400, srh3:500, eff_srh:380, dcape:700, scp:6, stp:4, sweat:420, ship:0.8, temp500:-18, t75:32, t85:44, freezing:3800, hail_lev:7000, season:0, region:1, time_of_day:1, conv_mode:2, trigger:0 },
+  lightning: { cape:800, mlcape:600, mucape:1000, cin:50, mlcin:40, li:-2, si:0, tt:44, ki:32, pw:45, rh700:70, rh850:80, td2m:20, lfc:1200, lcl:900, shear06:8, shear03:5, shear01:2, srh1:40, srh3:60, eff_srh:35, dcape:400, scp:0.3, stp:0.05, sweat:200, ship:0.1, temp500:-14, t75:26, t85:38, freezing:4200, hail_lev:8000, season:1, region:0, time_of_day:1, conv_mode:0, trigger:5 },
+};
+
+// ===================================================
+// STATE
+// ===================================================
+let values = {};
+let enabledParams = {}; // 存储哪些参数是启用的
+
+// Initialize defaults
+PARAMS.forEach(group => {
+  group.items.forEach(p => {
+    values[p.id] = p.default;
+    // 默认全部启用（如果参数有 hasValue 属性）
+    enabledParams[p.id] = (p.hasValue !== false);
+  });
+});
+
+// ===================================================
+// RENDER PARAM GROUPS
+// ===================================================
+function renderParams() {
+  const container = document.getElementById('paramGroups');
+  container.innerHTML = '';
+  PARAMS.forEach(group => {
+    const g = document.createElement('div');
+    g.className = 'param-group';
+    g.innerHTML = `
+      <div class="param-group-header">${group.icon}<span>${group.group}</span></div>
+    `;
+    group.items.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'param-item';
+
+      let control = '';
+      if (p.type === 'range') {
+        control = `
+          <div class="param-control">
+            <input type="range" id="range_${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${values[p.id]}"
+              oninput="updateValue('${p.id}', this.value)">
+            <input type="number" id="num_${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${values[p.id]}"
+              onchange="updateValue('${p.id}', this.value); updateSlider('${p.id}')">
+          </div>
+        `;
+      } else if (p.type === 'select') {
+        const opts = p.options.map((o, i) => `<option value="${i}" ${values[p.id]==i?'selected':''}>${o}</option>`).join('');
+        control = `<select id="sel_${p.id}" onchange="updateValue('${p.id}', parseInt(this.value))">${opts}</select>`;
+      }
+
+      item.innerHTML = `
+        <div class="param-label">
+          <span class="param-name">
+            ${p.label}
+            ${p.unit ? `<span class="unit">(${p.unit})</span>` : ''}
+            <span class="tip" data-tip="${p.desc}">?</span>
+          </span>
+          ${p.type==='range' ? `<span class="param-value-display" id="val_${p.id}">${formatVal(values[p.id], p)}</span>` : ''}
+        </div>
+        ${control}
+        <div class="param-toggle">
+          <span class="toggle-label">启用</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle_${p.id}" checked onchange="toggleParam('${p.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      `;
+      g.appendChild(item);
+    });
+    container.appendChild(g);
+  });
+}
+
+function formatVal(v, p) {
+  if (p.type === 'select') return p.options[v];
+  const n = parseFloat(v);
+  return isNaN(n) ? v : n.toFixed(p.step < 1 ? 1 : 0);
+}
+
+function updateValue(id, val) {
+  // Find param def
+  let p = null;
+  PARAMS.forEach(g => g.items.forEach(item => { if (item.id === id) p = item; }));
+  if (!p) return;
+  const num = parseFloat(val);
+  values[id] = isNaN(num) ? val : num;
+  // Update display
+  const disp = document.getElementById('val_' + id);
+  if (disp) disp.textContent = formatVal(values[id], p);
+  // Sync inputs
+  const numEl = document.getElementById('num_' + id);
+  if (numEl && document.activeElement !== numEl) numEl.value = values[id];
+  // Auto calculate
+  calculate();
+}
+
+function updateSlider(id) {
+  const numEl = document.getElementById('num_' + id);
+  const rangeEl = document.getElementById('range_' + id);
+  if (numEl && rangeEl) rangeEl.value = numEl.value;
+}
+
+// ===================================================
+// PARAMETER TOGGLE FUNCTION
+// ===================================================
+function toggleParam(id, enabled) {
+  enabledParams[id] = enabled;
+  // 更新UI样式
+  const item = document.querySelector(`[id^="range_${id}"], [id^="num_${id}"], [id^="sel_${id}"]`).closest('.param-item');
+  if (item) {
+    item.classList.toggle('param-disabled', !enabled);
+  }
+  // 重新计算
+  calculate();
+}
+
+// ===================================================
+// PROBABILITY CALCULATION ENGINE (考虑启用状态)
+// ===================================================
+
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+function clamp(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
+function lerp(a, b, t) { return a + (b - a) * clamp(t, 0, 1); }
+function getValue(id) {
+  // 如果参数被禁用，返回NaN表示不考虑此参数
+  return enabledParams[id] !== false ? values[id] : NaN;
+}
+
+function calculate() {
+  const v = values;
+  const results = {};
+
+  // ===== Season & region factors =====
+  const seasonFactor = [0.9, 1.1, 0.85, 0.7][v.season] || 1;
+  const regionFactor = { 0: 1.1, 1: 1.05, 2: 1.0, 3: 0.95, 4: 0.9, 5: 0.8, 6: 0.9 }[v.region] || 1;
+  const timeFactor = [0.75, 1.15, 1.05, 0.85][v.time_of_day] || 1;
+  const convModeFactor = { 0: 0.8, 1: 1.0, 2: 1.2, 3: 1.0 }[v.conv_mode] || 1;
+
+  // ===== BASE INSTABILITY SCORE (共用) =====
+  let capeScore = clamp((v.cape - 200) / 2800, 0, 1);
+  let cinPenalty = v.cin > 100 ? 0.4 : v.cin > 50 ? 0.7 : 1.0;
+  let liScore = clamp((-v.li - 1) / 9, 0, 1);
+  let siScore = clamp(-v.si / 8, 0, 1);
+  let ttScore = clamp((v.tt - 38) / 18, 0, 1);
+  let kiScore = clamp((v.ki - 20) / 20, 0, 1);
+  let instability = (capeScore*0.35 + liScore*0.2 + siScore*0.15 + ttScore*0.15 + kiScore*0.15) * cinPenalty;
+
+  // ===== MOISTURE SCORE =====
+  let pwScore = clamp((v.pw - 20) / 50, 0, 1);
+  let rh700Score = clamp((v.rh700 - 40) / 55, 0, 1);
+  let rh850Score = clamp((v.rh850 - 50) / 45, 0, 1);
+  let td2mScore = clamp((v.td2m - 10) / 18, 0, 1);
+  let lfcBonus = v.lfc < 800 ? 1.1 : v.lfc < 1200 ? 1.0 : v.lfc < 2000 ? 0.85 : 0.7;
+  let moisture = (pwScore*0.35 + rh700Score*0.25 + rh850Score*0.2 + td2mScore*0.2) * lfcBonus;
+
+  // ===== SHEAR SCORE =====
+  let shear06Score = clamp((v.shear06 - 5) / 30, 0, 1);
+  let shear01Score = clamp((v.shear01 - 2) / 14, 0, 1);
+  let srh1Score = clamp((v.srh1 - 50) / 450, 0, 1);
+  let srh3Score = clamp((v.srh3 - 50) / 600, 0, 1);
+  let dcapeScore = clamp((v.dcape - 200) / 1500, 0, 1);
+  let dynamics = shear06Score*0.3 + shear01Score*0.2 + srh1Score*0.2 + srh3Score*0.15 + dcapeScore*0.15;
+
+  // ===== TEMPERATURE DIFFERENCE SCORE (使用T75和T85) =====
+  let t75Score = clamp((v.t75 - 18) / 12, 0, 1);
+  let t85Score = clamp((v.t85 - 30) / 15, 0, 1);
+  let lapseScore = (t75Score*0.4 + t85Score*0.6);
+
+  // ---------------------------------------------------------------
+  // 1. 短时强降水 Rain
+  // ---------------------------------------------------------------
+  {
+    // Key: moisture, instability, PW, 700/850 RH
+    let base = (moisture*0.5 + instability*0.35 + dcapeScore*0.15);
+    // PW threshold bonus
+    let pwBonus = v.pw >= 60 ? 1.2 : v.pw >= 50 ? 1.1 : v.pw >= 40 ? 1.0 : 0.8;
+    // Heavy shear penalty (strong shear → MCS, less rain in one spot)
+    let shearPenalty = v.conv_mode === 3 ? 1.1 : (v.shear06 > 25 ? 0.85 : 1.0);
+    let p_rain = clamp(base * pwBonus * shearPenalty * seasonFactor * timeFactor * regionFactor, 0, 1);
+    // Composite check
+    if (v.ki < 28 || v.rh700 < 50) p_rain *= 0.6;
+    let factors = [];
+    if (v.pw >= 50) factors.push({ text: `PW≥50mm（${v.pw}mm），利于短时强降水`, type: 'pos' });
+    else factors.push({ text: `PW仅${v.pw}mm，水汽不够充沛`, type: v.pw < 35 ? 'neg' : 'warn' });
+    if (v.cape >= 1000) factors.push({ text: `CAPE=${v.cape}J/kg，热力不稳定强`, type: 'pos' });
+    if (v.ki >= 35) factors.push({ text: `K指数=${v.ki}，对流降水潜力强`, type: 'pos' });
+    else if (v.ki < 25) factors.push({ text: `K指数=${v.ki}<25，降水潜力有限`, type: 'neg' });
+    if (v.rh700 >= 70) factors.push({ text: `700hPa湿度${v.rh700}%，湿层深厚`, type: 'pos' });
+    else if (v.rh700 < 50) factors.push({ text: `中层干燥（700hPa ${v.rh700}%）`, type: 'neg' });
+    if (v.dcape >= 1200) factors.push({ text: `DCAPE≥1200J/kg（${v.dcape}），利于强下沉/地面风`, type: 'pos' });
+    results.rain = { prob: p_rain, factors };
+  }
+
+  // ---------------------------------------------------------------
+  // 2. 对流性大风 Wind
+  // ---------------------------------------------------------------
+  {
+    // Key: shear06, lapse rate, dry mid-level, shear01, CAPE
+    let dryMidBonus = v.rh700 < 50 ? 1.3 : v.rh700 < 60 ? 1.1 : 1.0;
+    let shearWind = clamp((v.shear06 - 8) / 25, 0, 1);
+    let lapse = lapseScore;
+    let base = (shearWind*0.4 + lapse*0.3 + capeScore*0.2 + dcapeScore*0.1) * dryMidBonus;
+    // Conv mode: line → higher wind risk
+    let convBonus = v.conv_mode === 1 ? 1.2 : v.conv_mode === 2 ? 1.15 : 1.0;
+    let p_wind = clamp(base * convBonus * seasonFactor * timeFactor, 0, 1);
+    let factors = [];
+    if (v.shear06 >= 20) factors.push({ text: `0-6km切变${v.shear06}m/s，强切变环境`, type: 'pos' });
+    else if (v.shear06 < 10) factors.push({ text: `0-6km切变仅${v.shear06}m/s，偏弱`, type: 'neg' });
+    if (v.t75 >= 30) factors.push({ text: `T75温差≥30℃(${v.t75}℃)，热力不稳定强`, type: 'pos' });
+    if (v.t85 >= 42) factors.push({ text: `T85温差≥42℃(${v.t85}℃)，极端不稳定环境`, type: 'pos' });
+    if (v.rh700 < 55) factors.push({ text: `中层干燥（${v.rh700}%），下沉增强大风`, type: 'pos' });
+    if (v.conv_mode === 1) factors.push({ text: '飑线结构，有利前侧大风', type: 'pos' });
+    if (v.sweat >= 300) factors.push({ text: `SWEAT=${v.sweat}，强对流风险显著`, type: 'pos' });
+    results.wind = { prob: p_wind, factors };
+  }
+
+  // ---------------------------------------------------------------
+  // 3. 冰雹 Hail
+  // ---------------------------------------------------------------
+  {
+    // Key: CAPE, shear06, SHIP, 0℃层高度, -20℃层, lapse rate
+    let freezingBonus = (v.freezing >= 2500 && v.freezing <= 4000) ? 1.2 : v.freezing > 4500 ? 0.7 : 0.9;
+    let hailLevBonus = v.hail_lev < 6500 ? 1.2 : v.hail_lev < 7500 ? 1.0 : 0.8;
+    let shipScore = clamp((v.ship - 0.3) / 3, 0, 1);
+    let base = (capeScore*0.25 + shear06Score*0.25 + shipScore*0.25 + lapseScore*0.15 + srh1Score*0.1);
+    let p_hail = clamp(base * freezingBonus * hailLevBonus * convModeFactor, 0, 1);
+    // Require some shear
+    if (v.shear06 < 10) p_hail *= 0.5;
+    let factors = [];
+    if (v.cape >= 2500) factors.push({ text: `CAPE≥2500J/kg（${v.cape}），冰雹潜力大`, type: 'pos' });
+    if (v.ship >= 1.0) factors.push({ text: `SHIP=${v.ship}≥1，显著冰雹参数强`, type: 'pos' });
+    else if (v.ship < 0.5) factors.push({ text: `SHIP=${v.ship}<0.5，冰雹潜力弱`, type: 'neg' });
+    if (v.freezing <= 4000 && v.freezing >= 2500) factors.push({ text: `0℃层高度${v.freezing}m，利于冰雹到地`, type: 'pos' });
+    else if (v.freezing > 4500) factors.push({ text: `0℃层高度偏高(${v.freezing}m)，冰雹融化概率大`, type: 'neg' });
+    if (v.hail_lev < 7000) factors.push({ text: `-20℃层${v.hail_lev}m，增长层厚度适宜`, type: 'pos' });
+    if (v.shear06 >= 20) factors.push({ text: `强风切变，利于冰雹云维持`, type: 'pos' });
+    if (v.t75 >= 30) factors.push({ text: `T75温差≥30℃(${v.t75}℃)，热力不稳定强`, type: 'pos' });
+    if (v.t85 >= 45) factors.push({ text: `T85温差≥45℃(${v.t85}℃)，极端不稳定利于大冰雹`, type: 'pos' });
+    results.hail = { prob: p_hail, factors };
+  }
+
+  // ---------------------------------------------------------------
+  // 4. 龙卷风 Tornado
+  // ---------------------------------------------------------------
+  {
+    // Key: STP, SRH1, shear01, LCL, CAPE, region
+    let stpScore = clamp((v.stp - 0.5) / 5, 0, 1);
+    let lowShear = clamp((v.shear01 - 5) / 12, 0, 1);
+    let srh1Hi = clamp((v.srh1 - 100) / 400, 0, 1);
+    let lcl_low = v.lfc < 800 ? 1.2 : v.lfc < 1200 ? 1.0 : v.lfc > 2000 ? 0.5 : 0.75;
+    let base = (stpScore*0.35 + lowShear*0.25 + srh1Hi*0.2 + capeScore*0.1 + shear06Score*0.1);
+    // Tornado mostly requires supercell or quasi-linear supercell
+    let convBonus = v.conv_mode === 2 ? 1.2 : v.conv_mode === 3 ? 0.9 : 0.7;
+    // Region: plain more favorable
+    let regionTornado = v.region === 1 ? 1.1 : v.region === 2 ? 1.05 : v.region === 0 ? 0.9 : 0.8;
+    let p_tornado = clamp(base * convBonus * lcl_low * regionTornado, 0, 1);
+    // Requires minimum SRH1
+    if (v.srh1 < 100) p_tornado *= 0.3;
+    if (v.shear01 < 5) p_tornado *= 0.4;
+    let factors = [];
+    if (v.stp >= 1) factors.push({ text: `STP=${v.stp}≥1，显著龙卷参数强`, type: 'pos' });
+    else factors.push({ text: `STP=${v.stp}<1，龙卷环境不显著`, type: v.stp > 0.5 ? 'warn' : 'neg' });
+    if (v.srh1 >= 300) factors.push({ text: `SRH1=${v.srh1}m²/s²，强低层螺旋度`, type: 'pos' });
+    else if (v.srh1 < 100) factors.push({ text: `SRH1不足（${v.srh1}m²/s²）`, type: 'neg' });
+    if (v.shear01 >= 10) factors.push({ text: `0-1km切变${v.shear01}m/s，强低层切变`, type: 'pos' });
+    else if (v.shear01 < 5) factors.push({ text: `低层切变弱（${v.shear01}m/s）`, type: 'neg' });
+    if (v.lfc < 800) factors.push({ text: `低LCL高度，近地层湿润利于龙卷`, type: 'pos' });
+    if (v.conv_mode === 2) factors.push({ text: '超级单体模式，利于中气旋形成', type: 'pos' });
+    if (v.conv_mode !== 2 && v.conv_mode !== 3) factors.push({ text: '非超级单体模式，龙卷概率受限', type: 'warn' });
+    results.tornado = { prob: p_tornado, factors };
+  }
+
+  // ---------------------------------------------------------------
+  // 5. 雷电 Lightning
+  // ---------------------------------------------------------------
+  {
+    // Key: instability, CAPE, KI, moisture, cloud depth
+    let base = (instability*0.4 + moisture*0.3 + kiScore*0.2 + dcapeScore*0.1);
+    let p_lightning = clamp(base * timeFactor * regionFactor * seasonFactor * 1.1, 0, 1);
+    // KI < 25 → almost no thunder
+    if (v.ki < 25) p_lightning *= 0.5;
+    if (v.cape < 300) p_lightning *= 0.5;
+    let factors = [];
+    if (v.ki >= 35) factors.push({ text: `K指数≥35（${v.ki}），强雷暴潜力`, type: 'pos' });
+    else if (v.ki < 25) factors.push({ text: `K指数<25（${v.ki}），雷电潜力弱`, type: 'neg' });
+    if (v.cape >= 1000) factors.push({ text: `CAPE充足（${v.cape}J/kg），深对流有利雷电`, type: 'pos' });
+    if (v.td2m >= 20) factors.push({ text: `地面露点高（${v.td2m}℃），水汽充沛`, type: 'pos' });
+    if (v.tt >= 50) factors.push({ text: `全总指数=${v.tt}，强不稳定闪电活跃`, type: 'pos' });
+    if (v.season === 1) factors.push({ text: '夏季背景，雷电最为频发', type: 'pos' });
+    if (v.time_of_day === 1) factors.push({ text: '午后最有利于热雷暴发展', type: 'pos' });
+    results.lightning = { prob: p_lightning, factors };
+  }
+
+  renderResults(results);
+}
+
+// ===================================================
+// RENDER RESULTS
+// ===================================================
+const WEATHER_TYPES = [
+  {
+    id: 'rain', name: '短时强降水', sub: '1小时≥20mm',
+    color: '#3b82f6',
+    iconBg: 'rgba(59,130,246,0.2)',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><path d="M20 17.58A5 5 0 0018 8h-1.26A8 8 0 104 15.25"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="8" y1="20" x2="8.01" y2="20"/><line x1="12" y1="18" x2="12.01" y2="18"/><line x1="12" y1="22" x2="12.01" y2="22"/><line x1="16" y1="16" x2="16.01" y2="16"/><line x1="16" y1="20" x2="16.01" y2="20"/></svg>`,
+  },
+  {
+    id: 'wind', name: '对流性大风', sub: '阵风≥17m/s',
+    color: '#22c55e',
+    iconBg: 'rgba(34,197,94,0.2)',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2"/></svg>`,
+  },
+  {
+    id: 'lightning', name: '雷电', sub: '云地闪',
+    color: '#eab308',
+    iconBg: 'rgba(234,179,8,0.2)',
+    icon: `<svg viewBox="0 0 24 24" fill="#facc15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
+  },
+  {
+    id: 'hail', name: '冰雹', sub: '直径≥5mm',
+    color: '#a855f7',
+    iconBg: 'rgba(168,85,247,0.2)',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><circle cx="8" cy="15" r="1.5"/><circle cx="16" cy="19" r="1.5"/><circle cx="12" cy="21" r="1.5"/><path d="M20 17.58A5 5 0 0018 8h-1.26A8 8 0 104 15.25"/></svg>`,
+  },
+  {
+    id: 'tornado', name: '龙卷风', sub: 'EF≥0级',
+    color: '#ef4444',
+    iconBg: 'rgba(239,68,68,0.2)',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><path d="M21 4H3M17 9H7M19 14H5M21 19H3"/></svg>`,
+  },
+];
+
+function probLevel(p) {
+  if (p < 0.15) return { cls: 'level-none', text: '可能性极小', bar: '#64748b' };
+  if (p < 0.35) return { cls: 'level-low', text: '低概率', bar: '#22c55e' };
+  if (p < 0.55) return { cls: 'level-mod', text: '中等概率', bar: '#eab308' };
+  if (p < 0.75) return { cls: 'level-high', text: '高概率', bar: '#f97316' };
+  return { cls: 'level-extreme', text: '极高概率', bar: '#ef4444' };
+}
+
+function cardClass(p) {
+  if (p < 0.15) return 'p-none';
+  if (p < 0.35) return 'p-low';
+  if (p < 0.55) return 'p-mod';
+  if (p < 0.75) return 'p-high';
+  return 'p-extreme';
+}
+
+function renderResults(results) {
+  const container = document.getElementById('resultCards');
+  container.innerHTML = '';
+
+  let totalScore = 0;
+  let totalWeight = 0;
+  const weights = { rain: 2, wind: 1.5, hail: 1.5, tornado: 1, lightning: 2 };
+
+  WEATHER_TYPES.forEach(wt => {
+    const r = results[wt.id];
+    if (!r) return;
+    const p = r.prob;
+    const lv = probLevel(p);
+    totalScore += p * weights[wt.id];
+    totalWeight += weights[wt.id];
+
+    const pct = Math.round(p * 100);
+    const card = document.createElement('div');
+    card.className = `weather-card ${cardClass(p)}`;
+    card.innerHTML = `
+      <div class="weather-card-header">
+        <div class="weather-icon" style="background:${wt.iconBg}">${wt.icon}</div>
+        <div>
+          <div class="weather-name" style="color:${wt.color}">${wt.name}</div>
+          <div class="weather-sub">${wt.sub}</div>
+        </div>
+        <span class="prob-level ${lv.cls}" style="margin-left:auto">${lv.text}</span>
+      </div>
+      <div class="prob-bar-wrap">
+        <div class="prob-bar-bg">
+          <div class="prob-bar-fill" id="bar_${wt.id}" style="width:0%;background:${lv.bar}"></div>
+        </div>
+        <span class="prob-pct" style="color:${lv.bar}">${pct}%</span>
+      </div>
+      <div class="factors-list">
+        ${r.factors.slice(0,3).map(f => `<div class="factor-item"><span class="factor-${f.type}">${f.text}</span></div>`).join('')}
+      </div>
+    `;
+    container.appendChild(card);
+    // Animate bar
+    requestAnimationFrame(() => {
+      const bar = document.getElementById('bar_' + wt.id);
+      if (bar) bar.style.width = pct + '%';
+    });
+  });
+
+  // Overall score
+  const overall = totalScore / totalWeight;
+  const overallPct = Math.round(overall * 100);
+  const overallEl = document.getElementById('overallScore');
+  const overallDesc = document.getElementById('overallDesc');
+  let overallColor = '#94a3b8';
+  let overallText = '当前环境无显著强对流信号';
+  if (overallPct >= 70) { overallColor = '#ef4444'; overallText = '极端强对流威胁，多种灾害高度风险！'; }
+  else if (overallPct >= 50) { overallColor = '#f97316'; overallText = '强对流条件显著，注意多种灾害风险'; }
+  else if (overallPct >= 30) { overallColor = '#eab308'; overallText = '中等强对流潜力，局部灾害可能'; }
+  else if (overallPct >= 15) { overallColor = '#22c55e'; overallText = '弱强对流信号，灾害性天气概率偏低'; }
+  overallEl.style.color = overallColor;
+  overallEl.textContent = overallPct + '%';
+  overallDesc.textContent = overallText;
+}
+
+// ===================================================
+// PRESETS & RESET
+// ===================================================
+function loadPreset(type) {
+  const preset = PRESETS[type];
+  if (!preset) return;
+  Object.keys(preset).forEach(id => {
+    values[id] = preset[id];
+    // Update DOM
+    const rangeEl = document.getElementById('range_' + id);
+    if (rangeEl) rangeEl.value = values[id];
+    const numEl = document.getElementById('num_' + id);
+    if (numEl) numEl.value = values[id];
+    const selEl = document.getElementById('sel_' + id);
+    if (selEl) selEl.value = values[id];
+    // Find param def for display
+    let p = null;
+    PARAMS.forEach(g => g.items.forEach(item => { if (item.id === id) p = item; }));
+    const disp = document.getElementById('val_' + id);
+    if (disp && p) disp.textContent = formatVal(values[id], p);
+  });
+  calculate();
+}
+
+function resetAll() {
+  PARAMS.forEach(group => {
+    group.items.forEach(p => {
+      values[p.id] = p.default;
+      const rangeEl = document.getElementById('range_' + p.id);
+      if (rangeEl) rangeEl.value = p.default;
+      const numEl = document.getElementById('num_' + p.id);
+      if (numEl) numEl.value = p.default;
+      const selEl = document.getElementById('sel_' + p.id);
+      if (selEl) selEl.value = p.default;
+      const disp = document.getElementById('val_' + p.id);
+      if (disp) disp.textContent = formatVal(p.default, p);
+    });
+  });
+  calculate();
+}
+
+// ===================================================
+// INIT
+// ===================================================
+renderParams();
+calculate();
+</script>
+</body>
+</html>

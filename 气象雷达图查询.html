@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>气象雷达图查询</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --accent: #1f6feb;
+      --accent-hover: #388bfd;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --success: #238636;
+      --danger: #da3633;
+      --btn-bg: #21262d;
+      --btn-hover: #30363d;
+      --active-btn: #1f6feb;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header .icon {
+      font-size: 28px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    header .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    .main-wrap {
+      display: flex;
+      flex: 1;
+      gap: 0;
+    }
+
+    /* 侧边栏 */
+    .sidebar {
+      width: 260px;
+      min-width: 260px;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+      max-height: calc(100vh - 60px);
+    }
+
+    .sidebar-section h3 {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      padding-left: 4px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .btn-group button {
+      background: var(--btn-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      text-align: left;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-group button:hover {
+      background: var(--btn-hover);
+      border-color: var(--accent);
+    }
+
+    .btn-group button:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      border-color: var(--border);
+      background: var(--btn-bg);
+      color: var(--text-muted);
+    }
+
+    .btn-group button:disabled:hover {
+      background: var(--btn-bg);
+      border-color: var(--border);
+    }
+
+    .btn-group button.active {
+      background: var(--active-btn);
+      border-color: var(--active-btn);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .btn-group button .tag {
+      font-size: 10px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+      padding: 1px 5px;
+      margin-left: auto;
+    }
+
+    button.active .tag {
+      background: rgba(255,255,255,0.25);
+    }
+
+    /* 内容区 */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 24px;
+      gap: 16px;
+    }
+
+    /* 时间控制栏 */
+    .time-bar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .time-bar label {
+      font-size: 13px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .time-bar input[type="date"],
+    .time-bar input[type="time"] {
+      background: var(--btn-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .time-bar input:focus {
+      border-color: var(--accent);
+    }
+
+    /* 时间快捷选 */
+    .time-quick {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-left: 4px;
+    }
+
+    .time-quick button {
+      background: var(--btn-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+
+    .time-quick button:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    /* 当前时间显示 */
+    .time-utc-tag {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--btn-bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+
+    .time-utc-tag span {
+      color: #ffa657;
+      font-weight: 600;
+    }
+
+    /* 分钟对齐提示 */
+    .minute-hint {
+      font-size: 11px;
+      color: #ffa657;
+      padding-left: 4px;
+    }
+
+    /* 操作按钮栏 */
+    .action-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .action-bar button {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-nav {
+      background: var(--btn-bg);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .btn-nav:hover {
+      background: var(--btn-hover);
+      border-color: var(--accent);
+    }
+
+    .btn-now {
+      background: var(--btn-bg);
+      border-color: var(--border);
+      color: #ffa657;
+    }
+
+    .btn-now:hover {
+      background: var(--btn-hover);
+      border-color: #ffa657;
+    }
+
+    .current-info {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--btn-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      line-height: 1.6;
+    }
+
+    .current-info strong {
+      color: var(--text);
+    }
+
+    /* 图像显示区 */
+    .image-panel {
+      flex: 1;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 420px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .image-panel .placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-muted);
+    }
+
+    .image-panel .placeholder .big-icon {
+      font-size: 56px;
+      opacity: 0.4;
+    }
+
+    .image-panel .placeholder p {
+      font-size: 14px;
+    }
+
+    .image-panel img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: none;
+      border-radius: 6px;
+    }
+
+    .image-panel .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(13,17,23,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      z-index: 10;
+    }
+
+    .image-panel .loading-overlay .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .image-panel .loading-overlay p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-msg {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: #f85149;
+    }
+
+    .error-msg .err-icon {
+      font-size: 40px;
+    }
+
+    /* URL 显示 */
+    .url-bar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .url-bar .url-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .url-bar .url-text {
+      font-size: 12px;
+      color: var(--accent-hover);
+      word-break: break-all;
+      flex: 1;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .url-bar .url-text:hover {
+      text-decoration: underline;
+    }
+
+    .url-copy-btn {
+      background: var(--btn-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .url-copy-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    /* 状态栏 */
+    .status-bar {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 0 2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    .status-dot.ok { background: #3fb950; }
+    .status-dot.err { background: #f85149; }
+    .status-dot.loading { background: #ffa657; animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .main-wrap { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 12px;
+      }
+      .sidebar-section { min-width: 140px; }
+      .content { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="icon">🌧️</span>
+  <h1>气象雷达图查询</h1>
+  <span class="subtitle">数据来源：广东省气象局 gdfltq.com</span>
+</header>
+
+<div class="main-wrap">
+  <!-- 侧边控制栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <h3>📡 雷达站点</h3>
+      <div class="btn-group" id="station-group">
+        <button class="active" data-station="Z9754" data-suffix="754">
+          汕头
+          <span class="tag">Z9754</span>
+        </button>
+        <button data-station="Z9200" data-suffix="200">
+          广州
+          <span class="tag">Z9200</span>
+        </button>
+        <button data-station="Z9751" data-suffix="751">
+          韶关
+          <span class="tag">Z9751</span>
+        </button>
+        <button data-station="Z9662" data-suffix="662">
+          阳江
+          <span class="tag">Z9662</span>
+        </button>
+        <button data-station="Z9763" data-suffix="763" disabled>
+          连州
+          <span class="tag">Z9763</span>
+        </button>
+        <button data-station="Z9753" data-suffix="753" disabled>
+          梅州
+          <span class="tag">Z9753</span>
+        </button>
+        <button data-station="Z9660" data-suffix="660" disabled>
+          汕尾
+          <span class="tag">Z9660</span>
+        </button>
+        <button data-station="Z9758" data-suffix="758">
+          肇庆
+          <span class="tag">Z9758</span>
+        </button>
+        <button data-station="Z9755" data-suffix="755">
+          深圳
+          <span class="tag">Z9755</span>
+        </button>
+        <button data-station="Z9762" data-suffix="762">
+          河源
+          <span class="tag">Z9762</span>
+        </button>
+        <button data-station="Z9756" data-suffix="756" disabled>
+          珠海
+          <span class="tag">Z9756</span>
+        </button>
+        <button data-station="Z9750" data-suffix="750" disabled>
+          江门
+          <span class="tag">Z9750</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>🗂️ 图像类型</h3>
+      <div class="btn-group" id="type-group">
+        <button class="active" data-type="R">
+          基本反射率 1.5°仰角
+          <span class="tag">R</span>
+        </button>
+        <button data-type="V">
+          径向速度
+          <span class="tag">V</span>
+        </button>
+        <button data-type="VWP">
+          风廓线
+          <span class="tag">VWP</span>
+        </button>
+        <button data-type="VCP21D">
+          6分钟9仰角
+          <span class="tag">CR</span>
+        </button>
+        <button data-type="VIL">
+          垂直累积液态含水量
+          <span class="tag">VIL</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 主内容区 -->
+  <main class="content">
+
+    <!-- 时间选择栏 -->
+    <div class="time-bar">
+      <label>🕐 北京时间</label>
+      <input type="date" id="bj-date" />
+      <input type="time" id="bj-time" />
+      <span class="minute-hint" id="minute-hint"></span>
+      <div class="time-quick">
+        <button onclick="setNow()">现在</button>
+        <button onclick="offsetMinutes(-6)">-6分</button>
+        <button onclick="offsetMinutes(6)">+6分</button>
+        <button onclick="offsetMinutes(-60)">-1小时</button>
+        <button onclick="offsetMinutes(60)">+1小时</button>
+      </div>
+      <div class="time-utc-tag">对应UTC：<span id="utc-display">—</span></div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-bar">
+      <button class="btn-nav" onclick="navigate(-1)">◀ 上一张</button>
+      <button class="btn-primary" onclick="loadImage()">🔍 查看雷达图</button>
+      <button class="btn-nav" onclick="navigate(1)">下一张 ▶</button>
+      <button class="btn-now" onclick="setNow(); loadImage()">⚡ 查看最新</button>
+      <div class="current-info" id="current-info">请选择时间后点击查看</div>
+    </div>
+
+    <!-- 图像展示 -->
+    <div class="image-panel" id="image-panel">
+      <div class="placeholder" id="placeholder">
+        <div class="big-icon">🌩️</div>
+        <p>请选择站点、图像类型和时间，然后点击「查看雷达图」</p>
+      </div>
+      <div class="error-msg" id="error-msg">
+        <div class="err-icon">⚠️</div>
+        <div id="error-text">图像加载失败，请检查网络连接或该时次暂无数据</div>
+      </div>
+      <img id="radar-img" alt="雷达图像" />
+      <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner"></div>
+        <p>正在加载雷达图像...</p>
+      </div>
+    </div>
+
+    <!-- URL 展示 -->
+    <div class="url-bar" id="url-bar" style="display:none;">
+      <span class="url-label">图片地址</span>
+      <a class="url-text" id="url-display" href="#" target="_blank">—</a>
+      <button class="url-copy-btn" onclick="copyUrl()">复制</button>
+    </div>
+
+    <!-- 状态栏 -->
+    <div class="status-bar">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">就绪 · 键盘快捷键：← → 切换时次，Enter 查看</span>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // ——————————————————
+  // 全局状态
+  // ——————————————————
+  let currentStation = 'Z9754';
+  let currentSuffix = '754';
+  let currentType = 'R';
+  let lastUrl = '';
+
+  // ——————————————————
+  // URL 模板规则
+  // ——————————————————
+  const TYPE_RULES = {
+    R:      (s) => `https://www.gdfltq.com/datav3/singleStationRadarData/singleStationRadarDataPic/Z_RADR_I_${s.station}_${s.utc}_P_DOR_SAD_R_10_230_15.${s.suffix}.png`,
+    V:      (s) => `https://www.gdfltq.com:8989/datav3/singleStationRadarData/singleStationRadarDataPic/Z_RADR_I_${s.station}_${s.utc}_P_DOR_SAD_V_5_115_15.${s.suffix}.png`,
+    VWP:    (s) => `https://www.gdfltq.com/datav3/singleStationRadarData/singleStationRadarDataPic/Z_RADR_I_${s.station}_${s.utc}_P_DOR_SAD_VWP_20_NUL_NUL.${s.suffix}.png`,
+    VCP21D: (s) => `https://www.gdfltq.com/datav3/singleStationRadarData/singleStationRadarDataPic/Z_RADR_I_${s.station}_${s.utc}_P_DOR_SAD_CR_40X40_460_NUL.${s.suffix}.png`,
+    VIL:    (s) => `https://www.gdfltq.com/datav3/singleStationRadarData/singleStationRadarDataPic/Z_RADR_I_${s.station}_${s.utc}_P_DOR_SAD_VIL_40X40_230_NUL.${s.suffix}.png`,
+  };
+
+  // ——————————————————
+  // 初始化
+  // ——————————————————
+  function init() {
+    setNow();
+    setupButtonGroups();
+    document.getElementById('bj-date').addEventListener('change', updateUTCDisplay);
+    document.getElementById('bj-time').addEventListener('change', () => {
+      snapMinutes();
+      updateUTCDisplay();
+    });
+    document.getElementById('bj-time').addEventListener('blur', () => {
+      snapMinutes();
+      updateUTCDisplay();
+    });
+  }
+
+  // 设置当前北京时间（对齐6分钟）
+  function setNow() {
+    const now = new Date();
+    // 用 UTC 偏移+8 得到北京时间
+    const bj = new Date(now.getTime() + 8 * 3600 * 1000);
+    const yr = bj.getUTCFullYear();
+    const mo = String(bj.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(bj.getUTCDate()).padStart(2, '0');
+    const hh = String(bj.getUTCHours()).padStart(2, '0');
+    const mm = Math.floor(bj.getUTCMinutes() / 6) * 6;
+    const ms = String(mm).padStart(2, '0');
+
+    document.getElementById('bj-date').value = `${yr}-${mo}-${dd}`;
+    document.getElementById('bj-time').value = `${hh}:${ms}`;
+    document.getElementById('minute-hint').textContent = '';
+    updateUTCDisplay();
+  }
+
+  // 将分钟对齐到最近6的倍数
+  function snapMinutes() {
+    const timeEl = document.getElementById('bj-time');
+    if (!timeEl.value) return;
+    let [hh, mm] = timeEl.value.split(':').map(Number);
+    const orig = mm;
+    let snapped = Math.round(mm / 6) * 6;
+    if (snapped >= 60) { snapped = 54; }  // 保守处理，不跨小时
+    timeEl.value = `${String(hh).padStart(2,'0')}:${String(snapped).padStart(2,'0')}`;
+    if (orig % 6 !== 0) {
+      document.getElementById('minute-hint').textContent = `(已自动对齐至 ${String(snapped).padStart(2,'0')} 分)`;
+    } else {
+      document.getElementById('minute-hint').textContent = '';
+    }
+  }
+
+  // ——————————————————
+  // 北京时间 → UTC 字符串
+  // ——————————————————
+  function bjToUTC(dateStr, timeStr) {
+    const [yr, mo, dd] = dateStr.split('-').map(Number);
+    const [hh, mm] = timeStr.split(':').map(Number);
+    // 北京时间 UTC+8，减8小时得UTC
+    const bjMs = Date.UTC(yr, mo - 1, dd, hh, mm, 0);
+    const utcMs = bjMs - 8 * 3600 * 1000;
+    const u = new Date(utcMs);
+    return `${u.getUTCFullYear()}${String(u.getUTCMonth()+1).padStart(2,'0')}${String(u.getUTCDate()).padStart(2,'0')}${String(u.getUTCHours()).padStart(2,'0')}${String(u.getUTCMinutes()).padStart(2,'0')}`;
+  }
+
+  function updateUTCDisplay() {
+    const d = document.getElementById('bj-date').value;
+    const t = document.getElementById('bj-time').value;
+    if (d && t) {
+      document.getElementById('utc-display').textContent = bjToUTC(d, t);
+    } else {
+      document.getElementById('utc-display').textContent = '—';
+    }
+  }
+
+  // ——————————————————
+  // 时间偏移（分钟）
+  // ——————————————————
+  function offsetMinutes(delta) {
+    const dateEl = document.getElementById('bj-date');
+    const timeEl = document.getElementById('bj-time');
+    if (!dateEl.value || !timeEl.value) { setNow(); return; }
+    const [yr, mo, dd] = dateEl.value.split('-').map(Number);
+    const [hh, mm] = timeEl.value.split(':').map(Number);
+    const ms = Date.UTC(yr, mo-1, dd, hh, mm+delta, 0);
+    const d = new Date(ms);
+    dateEl.value = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+    timeEl.value = `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
+    document.getElementById('minute-hint').textContent = '';
+    updateUTCDisplay();
+  }
+
+  // 上一张 / 下一张（±6分钟）
+  function navigate(dir) {
+    offsetMinutes(dir * 6);
+    loadImage();
+  }
+
+  // ——————————————————
+  // 按钮组选择
+  // ——————————————————
+  function setupButtonGroups() {
+    document.querySelectorAll('#station-group button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#station-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentStation = btn.dataset.station;
+        currentSuffix = btn.dataset.suffix;
+      });
+    });
+    document.querySelectorAll('#type-group button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#type-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentType = btn.dataset.type;
+      });
+    });
+  }
+
+  // ——————————————————
+  // 加载雷达图
+  // ——————————————————
+  function loadImage() {
+    const dateVal = document.getElementById('bj-date').value;
+    let timeVal = document.getElementById('bj-time').value;
+    if (!dateVal || !timeVal) {
+      alert('请先选择日期和时间！');
+      return;
+    }
+
+    // 分钟强制对齐
+    let [hh, mm] = timeVal.split(':').map(Number);
+    mm = Math.round(mm / 6) * 6;
+    if (mm >= 60) mm = 54;
+    timeVal = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+    document.getElementById('bj-time').value = timeVal;
+
+    const utc = bjToUTC(dateVal, timeVal);
+    const url = TYPE_RULES[currentType]({ station: currentStation, suffix: currentSuffix, utc });
+    lastUrl = url;
+
+    // 更新 URL 栏
+    document.getElementById('url-bar').style.display = 'flex';
+    const urlEl = document.getElementById('url-display');
+    urlEl.textContent = url;
+    urlEl.href = url;
+
+    // 更新信息栏
+    document.getElementById('current-info').innerHTML =
+      `<strong>北京时间：</strong>${dateVal} ${timeVal}&emsp;<strong>UTC：</strong>${utc}`;
+    document.getElementById('utc-display').textContent = utc;
+
+    // 展示 loading
+    setStatus('loading', '正在加载图像...');
+    document.getElementById('loading-overlay').style.display = 'flex';
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('error-msg').style.display = 'none';
+    document.getElementById('radar-img').style.display = 'none';
+
+    const img = new Image();
+    img.onload = () => {
+      document.getElementById('loading-overlay').style.display = 'none';
+      const imgEl = document.getElementById('radar-img');
+      imgEl.src = url;
+      imgEl.style.display = 'block';
+      setStatus('ok', `✅ 加载成功 · 北京时间 ${dateVal} ${timeVal} · UTC ${utc}`);
+    };
+    img.onerror = () => {
+      document.getElementById('loading-overlay').style.display = 'none';
+      document.getElementById('error-msg').style.display = 'flex';
+      document.getElementById('error-text').textContent =
+        `该时次（UTC ${utc}）暂无雷达数据，可能该时间点没有观测，请尝试切换时次。`;
+      setStatus('err', `❌ 加载失败 · UTC ${utc}`);
+    };
+    img.src = url + '?_t=' + Date.now(); // 防缓存
+  }
+
+  // ——————————————————
+  // 状态指示
+  // ——————————————————
+  function setStatus(type, text) {
+    document.getElementById('status-dot').className = 'status-dot ' + type;
+    document.getElementById('status-text').textContent = text;
+  }
+
+  // ——————————————————
+  // 复制 URL
+  // ——————————————————
+  function copyUrl() {
+    if (!lastUrl) return;
+    navigator.clipboard.writeText(lastUrl).then(() => {
+      const btn = document.querySelector('.url-copy-btn');
+      btn.textContent = '✅ 已复制';
+      setTimeout(() => { btn.textContent = '复制'; }, 1600);
+    }).catch(() => {
+      prompt('请手动复制：', lastUrl);
+    });
+  }
+
+  // ——————————————————
+  // 键盘快捷键
+  // ——————————————————
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowLeft')  navigate(-1);
+    if (e.key === 'ArrowRight') navigate(1);
+    if (e.key === 'Enter')      loadImage();
+  });
+
+  // 启动
+  init();
+</script>
+</body>
+</html>

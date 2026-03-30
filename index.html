@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>潮气爱气象业务网 - 气象工具集合</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            color: #a0a0a0;
+        }
+        
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .tool-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .tool-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(0, 212, 255, 0.3);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.15);
+        }
+        
+        .tool-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+        
+        .tool-card h2 {
+            font-size: 1.4rem;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+        
+        .tool-card p {
+            font-size: 0.95rem;
+            color: #a0a0a0;
+            line-height: 1.6;
+        }
+        
+        .tool-card .tag {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 5px 12px;
+            background: rgba(0, 212, 255, 0.15);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #00d4ff;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .weather-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: -1;
+        }
+        
+        .cloud {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 50%;
+            animation: float 20s infinite ease-in-out;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateX(0) translateY(0); }
+            50% { transform: translateX(30px) translateY(-20px); }
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="weather-bg">
+        <div class="cloud" style="width: 200px; height: 200px; top: 10%; left: 5%;"></div>
+        <div class="cloud" style="width: 150px; height: 150px; top: 60%; left: 80%; animation-delay: -5s;"></div>
+        <div class="cloud" style="width: 180px; height: 180px; top: 30%; left: 60%; animation-delay: -10s;"></div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1>🌤️ 潮气爱气象业务网</h1>
+            <p class="subtitle">专业气象分析工具集合 · AI版</p>
+        </header>
+        
+        <div class="tools-grid">
+            <a href="./ECMWF%20精细化气象图查看器.html" class="tool-card">
+                <span class="tool-icon">🗺️</span>
+                <h2>ECMWF 精细化气象图查看器</h2>
+                <p>欧洲中期天气预报中心气象图可视化工具，支持东亚、华南、广东区域多种气象要素查看，包括风场、温度、湿度、降水等。</p>
+                <span class="tag">数值预报</span>
+            </a>
+            
+            <a href="./气象探空图查询.html" class="tool-card">
+                <span class="tool-icon">📊</span>
+                <h2>气象探空图查询</h2>
+                <p>高空探空图可视化查询工具，支持天衍版和中涡版两种数据源，查看不同站点和时次的探空图。</p>
+                <span class="tag">探空分析</span>
+            </a>
+            
+            <a href="./强对流天气概率判断工具.html" class="tool-card">
+                <span class="tool-icon">⛈️</span>
+                <h2>强对流天气概率判断工具</h2>
+                <p>根据强对流参数综合判断短时强降水、对流性大风、冰雹、龙卷风、雷电等强对流天气发生概率。</p>
+                <span class="tag">强对流预报</span>
+            </a>
+            
+            <a href="./气象雷达图查询.html" class="tool-card">
+                <span class="tool-icon">📡</span>
+                <h2>气象雷达图查询</h2>
+                <p>实时气象雷达图查询工具，支持多级雷达数据查看，帮助追踪降水回波和强对流天气系统。</p>
+                <span class="tag">雷达监测</span>
+            </a>
+        </div>
+        
+        <footer>
+            <p>© 2026 潮气爱气象业务网 · 专注气象数据分析与可视化</p>
+        </footer>
+    </div>
+</body>
+</html>
