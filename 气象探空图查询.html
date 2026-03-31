@@ -342,6 +342,11 @@
     <div class="form-group">
       <label>探空站号</label>
       <input type="text" id="station-input" value="59316" maxlength="6" placeholder="如 59316" />
+      <div class="quick-dates">
+        <button class="quick-btn" onclick="setStation('59316')">汕头</button>
+        <button class="quick-btn" onclick="setStation('59280')">清远</button>
+        <button class="quick-btn" onclick="setStation('45004')">香港</button>
+      </div>
     </div>
 
     <!-- 类型 -->
@@ -441,6 +446,10 @@
     const m = String(now.getUTCMonth() + 1).padStart(2, '0');
     const d = String(now.getUTCDate()).padStart(2, '0');
     document.getElementById('date-input').value = `${y}-${m}-${d}`;
+  }
+
+  function setStation(code) {
+    document.getElementById('station-input').value = code;
   }
 
   function setType(t) {
